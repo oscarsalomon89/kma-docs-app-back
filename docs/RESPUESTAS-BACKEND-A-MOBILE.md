@@ -164,6 +164,11 @@ Ya están implementados y desplegados:
    - Respuesta incluye datos enriquecidos: `flow_name`, `project_name`, `facility_name`, `version`, `findings_count`, `created_at`, `status`.
 2. **Detalle:** `GET /api/audits/{id}`
    - Devuelve la auditoría completa con todas sus `answers`, `flow_version`, metadata del proyecto y auditor.
+   - **URLs prefirmadas de fotos:** Todas las fotos en `answers[].values.photos` y en `steps[].answer.values.photos` se retornan como URLs HTTPS prefirmadas de lectura (GET) válidas por 60 minutos, permitiendo que la UI móvil renderice las fotos existentes incluso desde dispositivos nuevos sin almacenamiento local previo.
+   - **Ciclo de fotos en edición (`PUT`/`PATCH`):**
+     - Si la app no modifica las fotos de un paso, reenvía las URLs que recibió; Backend las normaliza automáticamente al formato canónico `s3://` para no persistir tokens temporales en DynamoDB.
+     - Si la app agrega fotos nuevas, llama primero a `POST /api/uploads` con el `audit_id` existente, sube el binario a S3, y añade la nueva `file_url` devuelta en el array `photos` del paso.
+     - Si la app elimina una foto, simplemente la excluye del array `photos` en el `PUT`/`PATCH`. No es necesario llamar a ningún endpoint de borrado en S3.
 
 ---
 
