@@ -172,15 +172,19 @@ Ya están implementados y desplegados:
 
 ---
 
-### 9. Edición de Auditorías tras el Submit
-- **Regla de Negocio:**
+### 9. Edición de Auditorías (`PUT` y `PATCH /api/audits/{id}`)
+- **Estados permitidos para editar:**
   - Se permite `PUT /api/audits/{id}` y `PATCH /api/audits/{id}` mientras el estado sea:
-    - `audit_in_progress` (durante la captura en campo).
-    - `draft_report_pending_review` (completada por el auditor, en cola o pendiente de revisión).
+    - `audit_in_progress` (durante la captura en campo o borrador).
+    - `draft_report_pending_review` (completada por el auditor, en cola o pendiente de revisión técnica).
   - Se bloquea la edición (`400 Bad Request`) si la auditoría ya pasó a:
     - `draft_report_in_review` (el revisor técnico ya está editando el reporte en la Web).
     - `completed` / `final_report_sent_to_client` (reporte final emitido).
 - Si se edita en `draft_report_pending_review`, backend vuelve a disparar el evento de enriquecimiento a SQS para recalcular hallazgos.
+- **Manejo de Imágenes en el `PUT` / `PATCH`:**
+  - **Sin cambios en fotos:** Si el auditor solo modifica notas, medidas o valores y no tocó las fotos, Mobile reenvía el array `photos` tal como lo recibió del `GET`. No se llama a `/uploads` ni se sube nada a S3. Backend normaliza automáticamente las URLs a `s3://` para evitar persistir firmas temporales en DynamoDB.
+  - **Fotos nuevas agregadas:** Mobile llama primero a `POST /api/uploads` pasando el `audit_id` existente y la lista de archivos nuevos (`name`, `step_id`, `content_type`), sube el binario a S3 vía `upload_url`, y en el payload del `PUT`/`PATCH` incluye las fotos existentes más la nueva `file_url` (`s3://...`).
+  - **Fotos eliminadas:** Mobile simplemente excluye la foto del array `photos` del paso. Backend sobreescribe el array persistiendo solo las fotos enviadas; no se requiere llamar a ningún endpoint de borrado en S3.
 
 ---
 
